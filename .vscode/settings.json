@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "syslog.h": "c",
+        "unistd.h": "c",
+        "stat.h": "c"
+    }
+}
