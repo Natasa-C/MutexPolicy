@@ -5,11 +5,9 @@
 #include <sys/stat.h>  //umask(3)
 #include <sys/types.h> //pid_t
 #include <syslog.h>    //syslog(3), openlog(3), closelog(3)
-#include <string.h>
-#include <zmq.h>
 
 /*
-To compile:  	cc -o mydaemon mydaemon.c -lzmq
+To compile:  	cc -o mydaemon mydaemon.c
 To run:		    ./mydaemon
 To check if everything is working properly: ps -xj | grep mydaemon
 To terminate:	kill pid
@@ -152,47 +150,25 @@ int daemonize(char *name, char *path, char *infile, char *outfile, char *errfile
 
 int main()
 {
-    //  Socket to talk to clients
-    void *context = zmq_ctx_new();
-    if (context == NULL)
-        return -1;
-
-    void *responder = zmq_socket(context, ZMQ_REQ);
-    if (responder == NULL)
-        return -1;
-
-    int rc = zmq_bind(responder, "tcp://*:5555");
-    if (rc != 0)
-        return 0;
-
     int res;
-    int session_time_limit = 2000;
-    int delay = 5;
+    int ttl = 120;
+    int delay = 15;
 
-    if ((res = daemonize("tester", RUNNING_DIR, NULL, NULL, NULL)) != 0)
+    if ((res = daemonize("test", RUNNING_DIR, NULL, NULL, NULL)) != 0)
     {
         fprintf(stderr, "error: daemonize failed\n");
         exit(EXIT_FAILURE);
     }
 
-    syslog(LOG_NOTICE, "Daemon up and running. %d remaining time.", session_time_limit);
-    syslog(LOG_NOTICE, "Waiting for messages");
-
-    while (1)
+    while (ttl > 0)
     {
         //daemon code here
-        // syslog(LOG_NOTICE, "%d remaining time.", session_time_limit);
-
-        char buffer[50];
-        zmq_recv(responder, buffer, 50, 0);
-        syslog(LOG_NOTICE, "%s \n", buffer);
-        sleep(1); //  Do some 'work'
-
+        syslog(LOG_NOTICE, "daemon ttl %d", ttl);
         sleep(delay);
-        session_time_limit -= delay;
+        ttl -= delay;
     }
 
-    syslog(LOG_NOTICE, "daemon session_time_limit expired");
+    syslog(LOG_NOTICE, "daemon ttl expired");
     closelog();
 
     return (EXIT_SUCCESS);
