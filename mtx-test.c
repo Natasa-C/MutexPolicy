@@ -5,6 +5,11 @@
 #include <pthread.h>
 #include <zmq.h>
 
+/*
+To compile:  	cc -o mtx mtx-test.c -lzmq
+To run:		    ./mtx
+*/
+
 pid_t getpid(void);
 pid_t getppid(void);
 
