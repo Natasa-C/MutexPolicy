@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define MUTEX_NUMBER 10
+#define MAX_PIDS_IN_WAITING 10
+
 /*
 To compile:  	cc -o server server.c -lzmq
 To run:		    ./server
@@ -16,6 +19,7 @@ struct Mutex
     unsigned int id;
     int opened;
     int locked;
+    long owner;
 };
 
 struct Pair
@@ -24,8 +28,8 @@ struct Pair
     struct Mutex mtx;
 };
 
-struct Pair assignedMtxs[10]; // contains pid-mtx_id mapping in order of mutex creation
-long waitingPids[10][10];     // contains the processes that await the release of a mutex identified with mtx_id of index
+struct Pair assignedMtxs[MUTEX_NUMBER];                  // contains pid-mtx_id mapping in order of mutex creation
+long waitingPids[MUTEX_NUMBER][MAX_PIDS_IN_WAITING + 1]; // contains the processes that await the release of a mutex identified with mtx_id of index
 int mtxsNo = 0;
 int pidsNo = 0;
 
@@ -42,7 +46,6 @@ int main(void)
     {
         char buffer[50];
         zmq_recv(responder, buffer, 50, 0);
-        printf("%s \n", buffer);
 
         // process buffer
 
@@ -50,7 +53,7 @@ int main(void)
         char *ptr = strtok(buffer, delim);
         char funcName[50];
         strcpy(funcName, ptr);
-        printf("\nfunction called: '%s'\n", funcName);
+        printf("\nCalled: '%s'\n", funcName);
 
         // handle mtx_open
         if (strcmp(funcName, "mtx_open") == 0)
@@ -58,10 +61,8 @@ int main(void)
             int position;
             // parse params mtx_open mtx_pid
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
-
             long pid = atoi(ptr);
-            printf("The number(unsigned long integer) is %ld\n", pid);
+            printf("PID: %ld\n", pid);
 
             // body of mtx_open
             if (mtxsNo == 0)
@@ -73,6 +74,7 @@ int main(void)
                 newMtx.id = mtxsNo;
                 newMtx.opened = 1;
                 newMtx.locked = 0;
+                newMtx.owner = pid;
 
                 struct Pair newPair;
                 newPair.pid = pid;
@@ -93,10 +95,11 @@ int main(void)
                 {
                     // get first mutex with opened status false
                     if (assignedMtxs[i].mtx.opened == 0)
-                    {                                   // mutex was closed and can be opened again
-                        assignedMtxs[i].mtx.opened = 1; // open mutex for current pid
-                        assignedMtxs[i].mtx.locked = 0; // default lock value
-                        assignedMtxs[i].pid = pid;      // associates current pid with the mutex
+                    {                                    // mutex was closed and can be opened again
+                        assignedMtxs[i].mtx.opened = 1;  // open mutex for current pid
+                        assignedMtxs[i].mtx.locked = 0;  // default lock value
+                        assignedMtxs[i].pid = pid;       // associates current pid with the mutex
+                        assignedMtxs[i].mtx.owner = pid; // update owner
                         mutexIsAvailable = 1;
                         position = i;
 
@@ -117,6 +120,7 @@ int main(void)
                     newMtx.id = mtxsNo;
                     newMtx.opened = 1;
                     newMtx.locked = 0;
+                    newMtx.owner = pid;
 
                     struct Pair newPair;
                     newPair.pid = pid;
@@ -132,28 +136,24 @@ int main(void)
                 }
             }
 
-            printf("mtxsPosition: %d\n", position);
-            printf("mtxId: %d\n", assignedMtxs[mtxsNo - 1].mtx.id);
-            printf("mtxOpened: %d\n", assignedMtxs[mtxsNo - 1].mtx.opened);
-            printf("mtxLocked: %d\n", assignedMtxs[mtxsNo - 1].mtx.locked);
-            printf("Pid: %ld\n", assignedMtxs[mtxsNo - 1].pid);
+            printf("Generate mtxId: %d\n", assignedMtxs[mtxsNo - 1].mtx.id);
+            printf("Open status: done\n");
         }
         else if (strcmp(funcName, "mtx_close") == 0)
         { // handle mtx_close
             // parse params mtx_close mtx_id pid
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             int mtx_id = atoi(ptr);
-            printf("Parsed mtx_id: %d\n", mtx_id);
+            printf("mtx_id: %d\n", mtx_id);
 
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             long pid = atoi(ptr);
-            printf("Parsed pid (unsigned long integer): %ld\n", pid);
+            printf("PID: %ld\n", pid);
 
             // verify mutex is opened and uncloked before close
-            if (assignedMtxs[mtx_id - 1].mtx.locked == 1 || assignedMtxs[mtx_id - 1].mtx.opened == 0)
+            if (assignedMtxs[mtx_id - 1].mtx.locked == 1 || assignedMtxs[mtx_id - 1].mtx.opened == 0 || assignedMtxs[mtx_id - 1].mtx.owner != pid)
             {
+                printf("Close status: IMPOSSIBLE\n");
                 zmq_send(responder, "-1", 10, 0);
                 continue;
             }
@@ -161,50 +161,57 @@ int main(void)
             assignedMtxs[mtx_id - 1].mtx.opened = 0;
             assignedMtxs[mtx_id - 1].mtx.locked = 0;
 
+            printf("Close status: done\n");
             zmq_send(responder, "0", 10, 0);
         }
         else if (strcmp(funcName, "mtx_lock") == 0)
         { // handle mtx_lock
             // parse params mtx_lock mtx_id pid
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             int mtx_id = atoi(ptr);
-            printf("Parsed mtx_id %d\n", mtx_id);
+            printf("mtx_id %d\n", mtx_id);
 
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             long pid = atoi(ptr);
-            printf("Parsed pid (unsigned long integer) is %ld\n", pid);
+            printf("PID: %ld\n", pid);
 
-            // verifica conditii
+            // failure conditions
+            if (mtx_id <= 0 || mtx_id > MUTEX_NUMBER || assignedMtxs[mtx_id - 1].mtx.opened == 0)
+            {
+                printf("Lock status: IMPOSSIBLE\n");
+                zmq_send(responder, "-1", 10, 0);
+                continue;
+            }
 
             if (assignedMtxs[mtx_id - 1].mtx.locked == 1)
             {
                 // mtx_id is locked => add pid in waitingPids list of mtx_id
+                printf("Lock status: in waiting queue\n");
                 int length = waitingPids[mtx_id - 1][0];
                 waitingPids[mtx_id - 1][length + 1] = pid;
                 waitingPids[mtx_id - 1][0] = length + 1;
+                zmq_send(responder, "2", 10, 0);
+                continue;
             }
             else
             {
+                printf("Lock status: done\n");
                 assignedMtxs[mtx_id - 1].mtx.locked = 1; // lock mutex
                 assignedMtxs[mtx_id - 1].pid = pid;      // assigned pid with mutex it locked
+                zmq_send(responder, "0", 10, 0);
+                continue;
             }
-
-            zmq_send(responder, "0", 10, 0);
         }
         else if (strcmp(funcName, "mtx_check") == 0)
         { // handle mtx_lock
             // parse params mtx_lock mtx_id pid
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             int mtx_id = atoi(ptr);
-            printf("Parsed mtx_id %d\n", mtx_id);
+            printf("mtx_id %d\n", mtx_id);
 
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             long pid = atoi(ptr);
-            printf("Parsed pid (unsigned long integer) is %ld\n", pid);
+            printf("PID: %ld\n", pid);
 
             int pidIsWaiting = 0;
             for (int i = 1; i <= waitingPids[mtx_id - 1][0]; i++)
@@ -213,29 +220,33 @@ int main(void)
                 {
                     // found pid in waiting list
                     pidIsWaiting = 1;
+                    printf("Lock-check status: in waiting queue\n");
                     zmq_send(responder, "2", 2, 0);
+                    break;
                 }
             }
 
             if (!pidIsWaiting)
+            {
+                printf("Lock-check status: done\n");
                 zmq_send(responder, "0", 2, 0);
+            }
         }
         else if (strcmp(funcName, "mtx_unlock") == 0)
-        { // handle mtx_close
+        { // handle mtx_unlock
             // parse params mtx_unlock mtx_id pid
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             int mtx_id = atoi(ptr);
-            printf("Parsed mtx_id: %d\n", mtx_id);
+            printf("mtx_id: %d\n", mtx_id);
 
             ptr = strtok(NULL, delim);
-            printf("ptr: %s\n", ptr);
             long pid = atoi(ptr);
-            printf("Parsed pid (unsigned long integer): %ld\n", pid);
+            printf("PID: %ld\n", pid);
 
             // verify mutex is opened and locked before close
             if (assignedMtxs[mtx_id - 1].mtx.locked == 0 || assignedMtxs[mtx_id - 1].mtx.opened == 0)
             {
+                printf("Unlock status: IMPOSSIBLE\n");
                 zmq_send(responder, "-1", 10, 0);
                 continue;
             }
@@ -255,6 +266,7 @@ int main(void)
                 // assign mutex to first pid in waiting
                 assignedMtxs[mtx_id - 1].pid = waitingPids[mtx_id - 1][1];
                 assignedMtxs[mtx_id - 1].mtx.opened = 1;
+                assignedMtxs[mtx_id - 1].mtx.locked = 1;
 
                 // remove pid from waitingList
                 for (int i = 2; i <= waitingPids[mtx_id - 1][0]; i++)
@@ -263,11 +275,11 @@ int main(void)
                 waitingPids[mtx_id - 1][0] -= 1;
             }
 
+            printf("Unlock status: done\n");
             zmq_send(responder, "0", 10, 0);
         }
 
         sleep(1);
-        zmq_send(responder, "01", 2, 0);
     }
     return 0;
 }
