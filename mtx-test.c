@@ -54,18 +54,22 @@ int mtx_open(pid_t pid)
     if (strstr(received_text, "-"))
     {
         status = -1;
-        return status;
+        printf("Status-open: %d\n", status);
+        printf("Pid %s can not open any mutex\n", mypid);
     }
-    
-    printf("Status: %d\n", status);
-    int mtx_id = atoi(received_text);
-    printf("Pid %s opened mutex %d\n", mypid, mtx_id);
+    else
+    {
+        printf("Status-open: %d\n", status);
+        int mtx_id = atoi(received_text);
+        printf("Pid %s opened mutex %d\n", mypid, mtx_id);
+        status = mtx_id;
+    }
 
     //close socket and destroy context
     zmq_close(requester);
     zmq_ctx_destroy(context);
 
-    return mtx_id;
+    return status;
 }
 
 int mtx_close(int id, pid_t pid)
@@ -108,19 +112,22 @@ int mtx_close(int id, pid_t pid)
     if (strstr(received_text, "-"))
     {
         status = -1;
-        printf("Status: %d\n", status);
-        return -1;
+        printf("Status-close: %d\n", status);
+        printf("Pid %s can not close mutex %s\n", mypid, myid);
     }
 
     //close socket
     zmq_close(requester);
-
     //destroy context
     zmq_ctx_destroy(context);
 
-    printf("Status: %d\n", status);
-    printf("Pid %s closed mutex %s\n", mypid, myid);
-    return 0;
+    if (status == 0)
+    {
+        printf("Status-close: %d\n", status);
+        printf("Pid %s closed mutex %s\n", mypid, myid);
+    }
+
+    return status;
 }
 
 int mtx_lock(int id, pid_t pid)
@@ -155,22 +162,25 @@ int mtx_lock(int id, pid_t pid)
     // send to daemon
     zmq_send(requester, buffer, 50, 0);
 
-    int status = 0;
+    int status = 0; // 0 on success, -1 on failure
 
     while (1)
     { // waits until it receives the mutex
-
         char received_text[2];
         zmq_recv(requester, received_text, 2, 0);
 
         if (strstr(received_text, "-"))
         {
             status = -1; // if a error has occurred -1 is returned
+            printf("Status-lock: %d", status);
+            printf("Pid %s can not lock mutex %s\n", mypid, myid);
             break;
         }
         else if (strstr(received_text, "0"))
         {
             // succesfull function => received mutex
+            printf("Status-lock: %d\n", status);
+            printf("Pid %s locked mutex %s\n", mypid, myid);
             break;
         }
 
@@ -183,6 +193,9 @@ int mtx_lock(int id, pid_t pid)
         strcat(partialBuffer, mypid); // process pid
 
         // send to daemon
+        printf("Status-lock-check: %s\n", received_text);
+        printf("Pid %s is waiting to lock mutex %s\n", mypid, myid);
+        sleep(10);
         zmq_send(requester, partialBuffer, 50, 0);
     }
 
@@ -191,13 +204,7 @@ int mtx_lock(int id, pid_t pid)
     //destroy context
     zmq_ctx_destroy(context);
 
-    printf("Status: %d\n", status);
-    printf("Pid %s locked mutex %s\n", mypid, myid);
-    // if an error occurred
-    if (status == -1)
-        return -1;
-
-    return 0;
+    return status;
 }
 
 int mtx_unlock(int id, pid_t pid)
@@ -241,17 +248,20 @@ int mtx_unlock(int id, pid_t pid)
     if (strstr(received_text, "-"))
     {
         status = -1;
+        printf("Status-unlock: %d\n", status);
+        printf("Pid %s can not unlock mutex %s\n", mypid, myid);
+    }
+    else
+    {
+        printf("Status-unlock: %d\n", status);
+        printf("Pid %s unlocked mutex %s\n", mypid, myid);
     }
 
     //close socket
     zmq_close(requester);
-
     //destroy context
     zmq_ctx_destroy(context);
 
-    printf("Status: %d\n", status);
-    if (status == 0)
-        printf("Pid %s unlocked mutex %s\n", mypid, myid);
     return status;
 }
 
@@ -267,8 +277,11 @@ int main()
     {
         // mtx_close(1, 9146);
         mtx_lock(id, pid);
+        sleep(20);
         mtx_unlock(id, pid);
+        sleep(50);
         mtx_close(id, pid);
+        sleep(20);
     }
 
     return 0;
