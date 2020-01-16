@@ -26,12 +26,12 @@ int mtx_open(int id, pid_t pid){
     // create buffer to be sent
     char mypid[15];
     sprintf(mypid, "%d", pid);
-    char myid[15];
-    sprintf(myid, "%d", id);
+    // char myid[15];
+    // sprintf(myid, "%d", id);
     char buffer[50];
     strcpy(buffer, "mtx_open");
-    strcat(buffer, " ");
-    strcat(buffer, myid); // mutex id
+    // strcat(buffer, " ");
+    // strcat(buffer, myid); // mutex id
     strcat(buffer, " ");
     strcat(buffer, mypid); // process pid
 
