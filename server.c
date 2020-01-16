@@ -63,27 +63,6 @@ int main(void)
             long pid = atoi(ptr);
             printf("The number(unsigned long integer) is %ld\n", pid);
 
-            // const unsigned int base = 10;
-            // char **stringPart;
-            // long pid = strtol(ptr, stringPart, base);
-
-            // /* If the result is 0, test for an error */
-            // if (pid == 0)
-            // {
-            //     /* If a conversion error occurred, display a message and exit */
-            //     if (errno == EINVAL)
-            //     {
-            //         printf("Conversion error occurred: %d\n", errno);
-            //         exit(0);
-            //     }
-
-            //     /* If the value provided was out of range, display a warning message */
-            //     if (errno == ERANGE)
-            //         printf("The value provided was out of range\n");
-            // }
-
-            // printf("String part is %s", stringPart);
-
             // body of mtx_open
             if (mtxsNo == 0)
             {
@@ -102,7 +81,10 @@ int main(void)
                 assignedMtxs[mtxsNo - 1] = newPair;
                 position = mtxsNo - 1;
 
-                // send mtx_id = 1 to user
+                // send mtx_id = mtxsNo to user
+                char id_to_send[10];
+                sprintf(id_to_send, "%d", mtxsNo);
+                zmq_send(responder, id_to_send, 10, 0);
             }
             else
             {
@@ -115,9 +97,13 @@ int main(void)
                         assignedMtxs[i].mtx.opened = 1; // open mutex for current pid
                         assignedMtxs[i].mtx.locked = 0; // default lock value
                         assignedMtxs[i].pid = pid;      // associates current pid with the mutex
-                        // send mtx_id = i + 1 to user
                         mutexIsAvailable = 1;
                         position = i;
+
+                        // send mtx_id = i + 1 to user
+                        char id_to_send[10];
+                        sprintf(id_to_send, "%d", i + 1);
+                        zmq_send(responder, id_to_send, 10, 0);
                         break;
                     }
                 }
@@ -139,7 +125,10 @@ int main(void)
                     assignedMtxs[mtxsNo - 1] = newPair;
                     position = mtxsNo - 1;
 
-                    // send mtx_id = mtxs_No to user
+                    // send mtx_id = mtxsNo to user
+                    char id_to_send[10];
+                    sprintf(id_to_send, "%d", mtxsNo);
+                    zmq_send(responder, id_to_send, 10, 0);
                 }
             }
 
