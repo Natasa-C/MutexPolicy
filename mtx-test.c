@@ -13,18 +13,20 @@ To run:		    ./mtx
 pid_t getpid(void);
 pid_t getppid(void);
 
-int mtx_open(int id, pid_t pid){
+int mtx_open(int id, pid_t pid)
+{
 
     // connect to server
     void *context = zmq_ctx_new();
-    if(context == NULL)
-        return -1;
-    
-    void *requester = zmq_socket(context, ZMQ_REQ);
-    if(requester == NULL)
+    if (context == NULL)
         return -1;
 
-    if(zmq_connect(requester, "tcp://localhost:5555") != 0){
+    void *requester = zmq_socket(context, ZMQ_REQ);
+    if (requester == NULL)
+        return -1;
+
+    if (zmq_connect(requester, "tcp://localhost:5555") != 0)
+    {
         return -1;
     }
 
@@ -45,33 +47,39 @@ int mtx_open(int id, pid_t pid){
     zmq_send(requester, buffer, 50, ZMQ_DONTWAIT);
 
     // receive from server
-    char received_text[2];   
-    zmq_recv(requester, received_text, 2, 0);
+    char received_text[10];
+    zmq_recv(requester, received_text, 10, 0);
 
-    int status = 0;     // 0 on success, -1 on failure
-    if(strstr(received_text, "-")){
+    int mtx_id = atoi(received_text);
+    printf("Mutex id assign to me (pid: %s) is %d\n", mypid, mtx_id);
+
+    int status = 0; // 0 on success, -1 on failure
+    if (strstr(received_text, "-"))
+    {
         status = -1;
-    }; 
+    };
 
     //close socket and destroy context
     zmq_close(requester);
     zmq_ctx_destroy(context);
 
-    return status; 
+    return status;
 }
 
-int mtx_close(int id, pid_t pid){
+int mtx_close(int id, pid_t pid)
+{
 
     // connect to server
     void *context = zmq_ctx_new();
-    if(context == NULL)
+    if (context == NULL)
         return -1;
 
     void *requester = zmq_socket(context, ZMQ_REQ);
-    if(requester == NULL)
+    if (requester == NULL)
         return -1;
 
-    if(zmq_connect(requester, "tcp://localhost:5555") != 0){
+    if (zmq_connect(requester, "tcp://localhost:5555") != 0)
+    {
         return -1;
     }
 
@@ -91,34 +99,37 @@ int mtx_close(int id, pid_t pid){
     zmq_send(requester, buffer, 50, 0);
 
     // receive from server
-    char received_text[10];   
+    char received_text[10];
     zmq_recv(requester, received_text, 10, 0);
 
-    int status = 0;     // 0 on success, -1 on failure
-    if(strstr(received_text, "-")){
+    int status = 0; // 0 on success, -1 on failure
+    if (strstr(received_text, "-"))
+    {
         status = -1;
-    } 
+    }
 
     //close socket
     zmq_close(requester);
-    
+
     //destroy context
     zmq_ctx_destroy(context);
 
     return status;
 }
-int mtx_lock(int id, pid_t pid){
+int mtx_lock(int id, pid_t pid)
+{
 
     // connect to server
     void *context = zmq_ctx_new();
-    if(context == NULL)
+    if (context == NULL)
         return -1;
 
     void *requester = zmq_socket(context, ZMQ_REQ);
-    if(requester == NULL)
+    if (requester == NULL)
         return -1;
 
-    if(zmq_connect(requester, "tcp://localhost:5555") != 0){
+    if (zmq_connect(requester, "tcp://localhost:5555") != 0)
+    {
         return -1;
     }
 
@@ -140,46 +151,51 @@ int mtx_lock(int id, pid_t pid){
     int status = 0;
     int acquired_lock;
 
-    while(1){ // waits until it receives the mutex
+    while (1)
+    { // waits until it receives the mutex
 
         char received_text[2];
         zmq_recv(requester, received_text, 2, 0);
 
-        if(strstr(received_text, "-")){
+        if (strstr(received_text, "-"))
+        {
             status = -1; // if a error has occurred -1 is returned
             break;
-        } 
-        else {
-            acquired_lock = atoi(received_text); 
-            if(acquired_lock == 1) //the process has the mutex
+        }
+        else
+        {
+            acquired_lock = atoi(received_text);
+            if (acquired_lock == 1) //the process has the mutex
                 break;
-        }   
-    }   
-    
+        }
+    }
+
     //close socket
     zmq_close(requester);
     //destroy context
     zmq_ctx_destroy(context);
 
     // if an error occurred
-    if(status == -1)
+    if (status == -1)
         return -1;
-    
+
     return acquired_lock;
 }
 
-int mtx_unlock(int id, pid_t pid){
+int mtx_unlock(int id, pid_t pid)
+{
 
     // connect to server
     void *context = zmq_ctx_new();
-    if(context == NULL)
+    if (context == NULL)
         return -1;
 
     void *requester = zmq_socket(context, ZMQ_REQ);
-    if(requester == NULL)
+    if (requester == NULL)
         return -1;
 
-    if(zmq_connect(requester, "tcp://localhost:5555") != 0){
+    if (zmq_connect(requester, "tcp://localhost:5555") != 0)
+    {
         return -1;
     }
 
@@ -199,25 +215,27 @@ int mtx_unlock(int id, pid_t pid){
     zmq_send(requester, buffer, 50, 0);
 
     // receive from server
-    char received_text[2];   
+    char received_text[2];
     zmq_recv(requester, received_text, 2, 0);
 
-    int status = 0;     // 0 on success, -1 on failure
+    int status = 0; // 0 on success, -1 on failure
 
-    if(strstr(received_text, "-")){
+    if (strstr(received_text, "-"))
+    {
         status = -1;
-    } 
+    }
 
     //close socket
     zmq_close(requester);
-    
+
     //destroy context
     zmq_ctx_destroy(context);
-    
+
     return status;
 }
 
-int main(){
+int main()
+{
 
     int id = 5;
     pid_t pid = getpid();
