@@ -19,7 +19,7 @@ Inter-process communication (IPC) between server and processes is ensured by the
 
 > To run:		    ./mtx2
 
-### The server can successully manage one or more scripts running at the same time (which better illustrates the policy of access to mutex)
+### The server can successully manage one or more scripts running at the same time (which better illustrates the policy of access to mutexes)
 
 ### Test output for the scripts: mtx-test.c and mtx-test2.c, running at the same time
 ![Test-output](https://user-images.githubusercontent.com/57111995/74101258-a404f580-4b40-11ea-9e14-79868f9a5cfc.png)
