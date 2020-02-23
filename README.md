@@ -35,7 +35,7 @@ Inter-process communication (IPC) between server and processes is ensured by the
 - API Reference: http://api.zeromq.org/2-1:_start
 - example: https://zeromq.org/get-started/?language=c&fbclid=IwAR3A5rm8QBD2u1hcLcif5eDhA-_FdOgg8TXBGeYXFvvtFoov_4THd770VjI
 
-## Team
+## Project done in collaboration with:
+- [Alexandra Andronic](https://github.com/andronicaa)
 - [Ana Puiu](https://github.com/AMAPuiu)
-- [Natasa Cirstea](https://github.com/Natasa-C) 
-- [Madalina Cirstea](https://github.com/madalina-cirstea)
+- [Madalina Cirstea](https://github.com/madalina-cirstea) 
