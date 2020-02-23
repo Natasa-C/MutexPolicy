@@ -36,6 +36,5 @@ Inter-process communication (IPC) between server and processes is ensured by the
 - example: https://zeromq.org/get-started/?language=c&fbclid=IwAR3A5rm8QBD2u1hcLcif5eDhA-_FdOgg8TXBGeYXFvvtFoov_4THd770VjI
 
 ### Project done in collaboration with:
-- [Alexandra Andronic](https://github.com/andronicaa)
 - [Ana Puiu](https://github.com/AMAPuiu)
 - [Madalina Cirstea](https://github.com/madalina-cirstea) 
